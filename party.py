@@ -15,6 +15,7 @@ class CharacterSprite(pygame.sprite.Sprite):
 	# chartype:     value from the Character enum
 	def __init__(self, position, angle, chartype):
 		self.src_image = pygame.image.load("img/char_"+chartype.value+".png")
+		self.chartype = chartype
 		self.rect.topleft = position
 		self.rotate(angle)
 		self.ghost = 0
@@ -36,7 +37,7 @@ class PartyGrid():
 	grid_position = (0,0)
 	party_members = []    # Contains CharacterSprite elements. Must be in parallel with array below.
 	party_positions = []  # Contains (gridx, gridy) elements. Must be in parallel with array above.
-	grid_contents = [[(-1,0,0) for x in range(GRID_SIZE)] for x in range(GRID_SIZE)] # Contains Character enum elements & grid pos of source character.
+	grid_contents = [[(0,0,-1) for x in range(GRID_SIZE)] for x in range(GRID_SIZE)] # Contains Character enum elements & grid pos of source character.
 
 	def __init__(self):
 		# ...
@@ -97,8 +98,16 @@ class PartyGrid():
 		party_members = updatedList
 		party_positions = updatedPosList
 
-	# Returns 1 if the character was successfully removed, 0, otherwise.
 	def removeCharacter(self, gridx, gridy):
+		updatedCharList = []
+		updatedPosList = []
+		removePos = (grid_contents[gridx][gridy][0], grid_contents[gridx][gridy][1])
+		for i in range(len(party_members)):
+			if party_positions[i] != removePos:
+				updatedList.append(party_members[i])
+				updatedPosList.append(party_positions[i])
+		party_members = updatedList
+		party_positions = updatedPosList		
 
 	# Returns the number of characters currently placed into this grid.
 	def numberOfCharcters(self):
@@ -113,7 +122,7 @@ class PartyGrid():
 	def getCharacter(self, gridx, gridy):
 		if gridx < 0 or gridy < 0 or gridx >= GRID_SIZE or gridy >= GRID_SIZE:
 			return -1
-		return self.grid_contents[gridx][gridy][0]
+		return self.grid_contents[gridx][gridy][2]
 
 	# Rotates the character at (gridx, gridy) counter-clockwise.
 	# Returns 1 if the rotation was successful, 0 otherwise.
@@ -136,6 +145,14 @@ class PartyGrid():
 	# Syncs the contents of the grid_contents array based on the contents of the party_members/party_positions array.
 	# Also updates the contents of party_members array based on the contents of the grid_position tuple.
 	def __updateGrid(self):
+		grid_contents = [[(0,0,-1) for x in range(GRID_SIZE)] for x in range(GRID_SIZE)] # Start with a clean slate for the grid
+		for i in range(len(party_members)):
+			# For each party member, get the grid cells they occupy, and use this to update the grid_contents array
+			populateCells = self.__determineOccupyingCells(party_members[i].chartype, party_members[i].rotation, party_positions[i][0], party_positions[i][1])	
+			for cell in populateCells:
+				grid_contents[cell[0]][cell[1]] = (party_positions[i][0], party_positions[i][1], party_members[i].chartype)
+			# Update where on the screen this character will be drawn
+			member.rect.topleft = (grid_position[0]+party_positions[i][0]*CELL_SIZE,grid_position[1]+party_positions[i][1]*CELL_SIZE)
 
 	# Given a pixel coordinate within the game screen, return the cooresponding coordinate within the grid space
 	# Returns (-1,-1) if outside the bounds of the grid
